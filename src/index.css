@@ -1,0 +1,176 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Manrope", "Segoe UI", sans-serif;
+  color: #0f172a;
+}
+
+body {
+  @apply bg-brand-bg text-slate-800 antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.glass-card {
+  @apply rounded-2xl border border-white/70 bg-white/90 shadow-md backdrop-blur;
+}
+
+html,
+body,
+#root {
+  transition: background-color 320ms ease, color 320ms ease;
+}
+
+* {
+  transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: 220ms;
+  transition-timing-function: ease;
+}
+
+/* Day class now represents the softer light palette (used for Night Mode). */
+html.day .bg-slate-950 {
+  background-color: #e9eff6 !important;
+}
+
+html.day .bg-slate-900\/70,
+html.day .bg-slate-900\/55,
+html.day .bg-slate-900\/50,
+html.day .bg-slate-900\/40,
+html.day .bg-slate-900 {
+  background-color: rgba(248, 250, 252, 0.95) !important;
+}
+
+html.day .border-white\/20,
+html.day .border-white\/15,
+html.day .border-white\/10 {
+  border-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+html.day .text-white {
+  color: #ffffff !important;
+}
+
+/* Keep text dark only inside remapped light dashboard shells/cards. */
+html.day .bg-slate-900\/70 .text-white,
+html.day .bg-slate-900\/55 .text-white,
+html.day .bg-slate-900\/50 .text-white,
+html.day .bg-slate-900\/40 .text-white,
+html.day .bg-slate-900 .text-white {
+  color: #0f172a !important;
+}
+
+html.day .text-slate-300,
+html.day .text-slate-200,
+html.day .text-slate-100 {
+  color: #334155 !important;
+}
+
+html.day .text-slate-500 {
+  color: #475569 !important;
+}
+
+html.day .text-slate-600,
+html.day .text-slate-700 {
+  color: #334155 !important;
+}
+
+html.day .bg-white\/10,
+html.day .bg-white\/5 {
+  background-color: rgba(226, 232, 240, 0.82) !important;
+}
+
+html.day .hover\:bg-white\/10:hover,
+html.day .hover\:bg-white\/20:hover,
+html.day .hover\:bg-white\/5:hover {
+  background-color: rgba(203, 213, 225, 0.82) !important;
+}
+
+html.day .from-cyan-500,
+html.day .to-indigo-500 {
+  filter: saturate(0.9);
+}
+
+/* Improve badge/action readability in light palette */
+html.day .text-indigo-100 {
+  color: #3730a3 !important;
+}
+
+html.day .text-emerald-100 {
+  color: #065f46 !important;
+}
+
+html.day .text-amber-100 {
+  color: #92400e !important;
+}
+
+html.day .text-cyan-100,
+html.day .text-cyan-200,
+html.day .text-cyan-300 {
+  color: #0e7490 !important;
+}
+
+html.day .text-rose-100,
+html.day .text-rose-200 {
+  color: #9f1239 !important;
+}
+
+html.day .bg-indigo-500\/20 {
+  background-color: rgba(99, 102, 241, 0.24) !important;
+}
+
+html.day .bg-emerald-500\/20 {
+  background-color: rgba(16, 185, 129, 0.24) !important;
+}
+
+html.day .bg-amber-500\/20 {
+  background-color: rgba(245, 158, 11, 0.24) !important;
+}
+
+html.day .bg-cyan-500\/20,
+html.day .bg-cyan-500\/10 {
+  background-color: rgba(6, 182, 212, 0.24) !important;
+}
+
+html.day .bg-rose-500\/20 {
+  background-color: rgba(244, 63, 94, 0.22) !important;
+}
+
+html.day .text-rose-300 {
+  color: #be123c !important;
+}
+
+/* Primary and dark buttons in day palette */
+html.day .bg-indigo-600 {
+  background-color: #4f46e5 !important;
+}
+
+html.day .hover\:bg-indigo-500:hover {
+  background-color: #4338ca !important;
+}
+
+html.day .bg-slate-900 {
+  background-color: #0f172a !important;
+}
+
+html.day .bg-slate-900.text-white,
+html.day button.bg-slate-900,
+html.day a.bg-slate-900 {
+  color: #ffffff !important;
+}
+
+/* Recharts readability in day mode */
+html.day .recharts-cartesian-axis-tick-value,
+html.day .recharts-legend-item-text,
+html.day .recharts-polar-angle-axis text,
+html.day .recharts-polar-radius-axis text,
+html.day .recharts-text {
+  fill: #475569 !important;
+}
+
+html.day .recharts-cartesian-grid line {
+  stroke: #cbd5e1 !important;
+}

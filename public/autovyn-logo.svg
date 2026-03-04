@@ -1,0 +1,19 @@
+<svg width="760" height="240" viewBox="0 0 760 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="760" height="240" fill="white"/>
+  <g transform="translate(20,24)">
+    <circle cx="20" cy="20" r="14" fill="#95C11F"/>
+    <circle cx="92" cy="20" r="14" fill="#00A0E3"/>
+    <circle cx="20" cy="164" r="14" fill="#F39200"/>
+    <circle cx="92" cy="164" r="14" fill="#E94E9B"/>
+    <path d="M20 58C20 39 34 24 52 24H92V52H52C49 52 46 55 46 58V82H20V58Z" fill="#95C11F"/>
+    <path d="M92 24H132C150 24 164 39 164 58V82H138V58C138 55 135 52 132 52H92V24Z" fill="#00A0E3"/>
+    <path d="M20 126H46V150C46 153 49 156 52 156H92V184H52C34 184 20 169 20 150V126Z" fill="#F39200"/>
+    <path d="M92 156H132C135 156 138 153 138 150V126H164V150C164 169 150 184 132 184H92V156Z" fill="#E94E9B"/>
+  </g>
+  <text x="205" y="112" font-size="88" font-family="Segoe UI, Arial, sans-serif" font-weight="800" fill="#001EAF">
+    AUTOVYN
+  </text>
+  <text x="205" y="188" font-size="64" font-family="Segoe UI, Arial, sans-serif" font-weight="500" fill="#00A0E3">
+    Automating lives!
+  </text>
+</svg>
