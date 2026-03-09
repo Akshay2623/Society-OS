@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { RevenueBarChart } from "../components/Charts";
 import { api } from "../services/api";
+import { getRole } from "../utils/auth";
 
 const toAmount = (value) => Number(value) || 0;
 const formatINR = (value) => `₹${toAmount(value).toLocaleString("en-IN")}`;
@@ -11,6 +12,9 @@ function Billing() {
   const [billingData, setBillingData] = useState([]);
   const [maintenanceCollection, setMaintenanceCollection] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [updatingInvoice, setUpdatingInvoice] = useState("");
+  const [statusError, setStatusError] = useState("");
+  const canEditStatus = getRole() === "admin";
 
   useEffect(() => {
     Promise.all([api.getBilling(), api.getMaintenance()])
@@ -31,6 +35,22 @@ function Billing() {
     .filter((item) => item.status === "Unpaid")
     .reduce((sum, item) => sum + toAmount(item.amount), 0);
 
+  const handleStatusChange = async (invoiceNo, status) => {
+    setStatusError("");
+    setUpdatingInvoice(invoiceNo);
+    try {
+      const updated = await api.updateBillingStatus(invoiceNo, status);
+      setBillingData((prev) =>
+        prev.map((row) => (row.id === invoiceNo ? { ...row, status: updated.status } : row))
+      );
+      setSelected((prev) => (prev?.id === invoiceNo ? { ...prev, status: updated.status } : prev));
+    } catch (error) {
+      setStatusError(error.message || "Unable to update status");
+    } finally {
+      setUpdatingInvoice("");
+    }
+  };
+
   return (
     <section className="space-y-6">
       {/* Revenue summary */}
@@ -50,6 +70,11 @@ function Billing() {
       {/* Payments table */}
       <div className="rounded-2xl border border-white/15 bg-slate-900/55 overflow-x-auto p-6 backdrop-blur">
         <h3 className="mb-4 text-lg font-semibold text-white">Payment Records</h3>
+        {statusError && (
+          <p className="mb-4 rounded-xl border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            {statusError}
+          </p>
+        )}
         <table className="min-w-full text-sm">
           <thead>
             <tr className="text-left text-slate-300">
@@ -74,6 +99,17 @@ function Billing() {
                   <span className={`rounded-xl px-3 py-1 text-xs font-semibold ${row.status === "Paid" ? "bg-emerald-500/20 text-emerald-100" : "bg-rose-500/20 text-rose-100"}`}>
                     {row.status}
                   </span>
+                  {canEditStatus && (
+                    <select
+                      value={row.status}
+                      onChange={(event) => handleStatusChange(row.id, event.target.value)}
+                      disabled={updatingInvoice === row.id}
+                      className="ml-3 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 outline-none transition hover:border-slate-400 focus:border-cyan-400/60 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="Paid">Paid</option>
+                      <option value="Unpaid">Unpaid</option>
+                    </select>
+                  )}
                 </td>
                 <td className="py-3">
                   <button
@@ -96,7 +132,7 @@ function Billing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+            className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/40 p-4"
           >
             <motion.div
               initial={{ y: 20, opacity: 0 }}

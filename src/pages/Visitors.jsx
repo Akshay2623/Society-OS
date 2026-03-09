@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pencil, Plus, X } from "lucide-react";
 import { api } from "../services/api";
+import { VisitorsCandleChart } from "../components/Charts";
 
 const badgeStyles = {
   Approved: "bg-emerald-500/20 text-emerald-100",
@@ -52,6 +53,67 @@ function Visitors() {
       );
     });
   }, [search, visitorsData]);
+
+  const candleData = useMemo(() => {
+    const buckets = new Map();
+
+    visitorsData.forEach((visitor) => {
+      const dt = visitor.entry_at ? new Date(visitor.entry_at) : null;
+      if (!dt || Number.isNaN(dt.getTime())) return;
+
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")} ${String(dt.getHours()).padStart(2, "0")}`;
+      if (!buckets.has(key)) {
+        buckets.set(key, {
+          key,
+          label: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true }),
+          sort: dt.getTime(),
+          total: 0,
+          pending: 0,
+          approved: 0,
+          exited: 0,
+          rejected: 0,
+        });
+      }
+
+      const row = buckets.get(key);
+      row.total += 1;
+      const status = String(visitor.status || "").toLowerCase();
+      if (status === "pending") row.pending += 1;
+      else if (status === "approved") row.approved += 1;
+      else if (status === "exited") row.exited += 1;
+      else if (status === "rejected") row.rejected += 1;
+    });
+
+    return Array.from(buckets.values())
+      .sort((a, b) => a.sort - b.sort)
+      .slice(-8)
+      .map((row) => {
+        const open = row.pending;
+        const close = row.approved + row.exited;
+        let high = Math.max(row.total, open, close);
+        let low = Math.min(row.rejected, open, close);
+
+        if (high === low) high += 1;
+
+        const bodyBase = Math.min(open, close);
+        const bodySize = Math.max(Math.abs(close - open), 0.3);
+        const wickCenter = (high + low) / 2;
+        const wickRange = (high - low) / 2;
+
+        return {
+          label: row.label,
+          open,
+          close,
+          high,
+          low,
+          bodyBase,
+          bodySize,
+          wickCenter,
+          wickRange,
+          trend: close >= open ? "up" : "down",
+        };
+      });
+  }, [visitorsData]);
 
   const onSubmit = async (event) => {
     event.preventDefault();
@@ -137,6 +199,8 @@ function Visitors() {
         </div>
       </div>
 
+      {candleData.length > 0 && <VisitorsCandleChart data={candleData} />}
+
       {/* Desktop table */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -218,7 +282,7 @@ function Visitors() {
       <AnimatePresence>
         {showEditModal && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+            className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/40 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -228,11 +292,15 @@ function Visitors() {
               initial={{ y: 28, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 28, opacity: 0 }}
-              className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-900 p-6 shadow-soft"
+              className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-white/15 dark:bg-slate-900"
             >
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-white">Edit Visitor</h3>
-                <button type="button" onClick={() => setShowEditModal(false)} className="rounded-xl p-2 text-slate-200 hover:bg-white/10">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Edit Visitor</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -240,7 +308,7 @@ function Visitors() {
                 <select
                   value={editForm.status}
                   onChange={(event) => setEditForm((prev) => ({ ...prev, status: event.target.value }))}
-                  className="rounded-2xl border border-white/20 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/30"
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-cyan-300/30 dark:border-white/20 dark:bg-slate-900/70 dark:text-slate-100"
                 >
                   <option>Pending</option>
                   <option>Approved</option>
@@ -251,7 +319,7 @@ function Visitors() {
                   type="datetime-local"
                   value={editForm.exitTime}
                   onChange={(event) => setEditForm((prev) => ({ ...prev, exitTime: event.target.value }))}
-                  className="rounded-2xl border border-white/20 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/30"
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-cyan-300/30 dark:border-white/20 dark:bg-slate-900/70 dark:text-slate-100"
                 />
               </div>
               {editError && <p className="mt-3 text-sm text-rose-600">{editError}</p>}
@@ -268,7 +336,7 @@ function Visitors() {
 
         {showModal && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+            className="fixed inset-0 z-[400] flex items-center justify-center bg-slate-900/40 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -278,11 +346,15 @@ function Visitors() {
               initial={{ y: 28, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 28, opacity: 0 }}
-              className="w-full max-w-lg rounded-2xl border border-white/15 bg-slate-900 p-6 shadow-soft"
+              className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-soft dark:border-white/15 dark:bg-slate-900"
             >
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-white">Add Visitor</h3>
-                <button type="button" onClick={() => setShowModal(false)} className="rounded-xl p-2 text-slate-200 hover:bg-white/10">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white">Add Visitor</h3>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10"
+                >
                   <X size={16} />
                 </button>
               </div>
@@ -293,19 +365,19 @@ function Visitors() {
                   value={form.name}
                   onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                   placeholder="Visitor Name"
-                  className="rounded-2xl border border-white/20 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/30"
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-300/30 dark:border-white/20 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400"
                 />
                 <input
                   value={form.phone}
                   onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
                   placeholder="Phone Number"
-                  className="rounded-2xl border border-white/20 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/30"
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-300/30 dark:border-white/20 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400"
                 />
                 <input
                   value={form.purpose}
                   onChange={(event) => setForm((prev) => ({ ...prev, purpose: event.target.value }))}
                   placeholder="Purpose (delivery, guest, etc.)"
-                  className="rounded-2xl border border-white/20 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/30"
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-300/30 dark:border-white/20 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400"
                 />
                 <input
                   required
@@ -314,12 +386,12 @@ function Visitors() {
                   value={form.flatId}
                   onChange={(event) => setForm((prev) => ({ ...prev, flatId: event.target.value }))}
                   placeholder="Flat ID"
-                  className="rounded-2xl border border-white/20 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/30"
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-cyan-300/30 dark:border-white/20 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-400"
                 />
                 <select
                   value={form.status}
                   onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))}
-                  className="rounded-2xl border border-white/20 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-cyan-300/30"
+                  className="rounded-2xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-cyan-300/30 dark:border-white/20 dark:bg-slate-900/70 dark:text-slate-100"
                 >
                   <option>Pending</option>
                   <option>Approved</option>

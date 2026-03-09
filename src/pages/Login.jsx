@@ -4,12 +4,6 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { getRole, getRoleHome, getToken, isTokenStructurallyValid, saveAuth } from "../utils/auth";
 
-const roleOptions = [
-  { value: "admin", label: "Admin" },
-  { value: "resident", label: "Resident" },
-  { value: "security", label: "Security" },
-];
-
 function Login() {
   const navigate = useNavigate();
   const existingToken = getToken();
@@ -22,7 +16,6 @@ function Login() {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    role: "admin",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -34,7 +27,6 @@ function Login() {
     if (!form.email.trim()) nextErrors.email = "Email is required";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) nextErrors.email = "Enter a valid email";
     if (!form.password) nextErrors.password = "Password is required";
-    if (!form.role) nextErrors.role = "Role is required";
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -123,22 +115,6 @@ function Login() {
                 </button>
               </div>
               {errors.password && <p className="mt-1 text-xs text-rose-600">{errors.password}</p>}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">Role</label>
-              <select
-                value={form.role}
-                onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))}
-                className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200"
-              >
-                {roleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {errors.role && <p className="mt-1 text-xs text-rose-600">{errors.role}</p>}
             </div>
 
             {serverError && (

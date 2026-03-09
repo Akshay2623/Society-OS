@@ -1,32 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bell, ChevronDown, Menu, Moon, Plus, Sun, X } from "lucide-react";
+import { Bell, ChevronDown, Menu, Moon, Sun, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { clearAuth } from "../utils/auth";
 import { api } from "../services/api";
 
-const notificationTabs = [
-  { id: "digital_notice", label: "Digital Notices" },
-  { id: "emergency_alert", label: "Emergency Alerts" },
-  { id: "society_event", label: "Society Events" },
-  { id: "festival_celebration", label: "Festival Celebrations" },
-];
-
 function Navbar({ onMenuClick, themeMode, onToggleTheme }) {
   const [openPanel, setOpenPanel] = useState(false);
-  const [activeTab, setActiveTab] = useState("digital_notice");
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [showComposer, setShowComposer] = useState(false);
-  const [form, setForm] = useState({ title: "", message: "" });
+  const [loadError, setLoadError] = useState("");
 
-  const unreadCount = useMemo(() => notifications.filter((item) => !item.is_read).length, [notifications]);
+  const noticeCount = useMemo(() => notifications.length, [notifications]);
 
   const loadNotifications = async () => {
     setLoading(true);
+    setLoadError("");
     try {
-      const data = await api.getNotifications(activeTab);
+      const data = await api.getNotifications();
       setNotifications(data || []);
+    } catch (error) {
+      setLoadError(error?.message || "Unable to load notices");
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -34,37 +28,14 @@ function Navbar({ onMenuClick, themeMode, onToggleTheme }) {
 
   useEffect(() => {
     if (!openPanel) return;
-    loadNotifications().catch(() => setNotifications([]));
-  }, [openPanel, activeTab]);
-
-  const onCreateNotification = async (event) => {
-    event.preventDefault();
-    if (!form.title.trim() || !form.message.trim()) return;
-    setSaving(true);
-    try {
-      await api.createNotification({
-        category: activeTab,
-        title: form.title.trim(),
-        message: form.message.trim(),
-      });
-      setForm({ title: "", message: "" });
-      setShowComposer(false);
-      await loadNotifications();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleRead = async (item) => {
-    await api.setNotificationRead(item.id, !item.is_read);
-    await loadNotifications();
-  };
+    loadNotifications();
+  }, [openPanel]);
 
   return (
     <motion.header
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-6 flex items-center justify-between rounded-2xl border border-white/15 bg-slate-900/55 px-5 py-4 backdrop-blur"
+      className="relative z-[200] mb-6 flex items-center justify-between rounded-2xl border border-white/15 bg-slate-900/55 px-5 py-4 backdrop-blur"
     >
       <div className="flex items-center gap-3">
         <button
@@ -85,7 +56,7 @@ function Navbar({ onMenuClick, themeMode, onToggleTheme }) {
           className="relative rounded-xl border border-white/20 p-2 text-slate-200 transition hover:scale-105 hover:bg-white/10"
         >
           <Bell size={18} />
-          {unreadCount > 0 && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-500" />}
+          {noticeCount > 0 && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-emerald-500" />}
         </button>
         <button
           onClick={onToggleTheme}
@@ -111,89 +82,33 @@ function Navbar({ onMenuClick, themeMode, onToggleTheme }) {
         </button>
 
         {openPanel && (
-          <div className="absolute right-0 top-14 z-[70] w-[28rem] max-w-[90vw] rounded-2xl border border-white/20 bg-slate-900/95 p-4 shadow-2xl backdrop-blur">
+          <div className="absolute right-0 top-full z-[300] mt-2 w-[30rem] max-w-[92vw] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl backdrop-blur dark:border-white/20 dark:bg-slate-900/95">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-white">Notifications</h3>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Notice Details</h3>
               <button
                 onClick={() => setOpenPanel(false)}
-                className="rounded-lg p-1 text-slate-300 hover:bg-white/10"
+                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/10"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="mb-3 grid grid-cols-2 gap-2">
-              {notificationTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                    activeTab === tab.id ? "bg-indigo-600 text-white" : "border border-white/20 text-slate-200 hover:bg-white/10"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mb-3 flex items-center justify-between">
-              <button
-                onClick={() => setShowComposer((prev) => !prev)}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/20 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/10"
-              >
-                <Plus size={13} />
-                Add
-              </button>
-              <span className="text-xs text-slate-300">{unreadCount} unread</span>
-            </div>
-
-            {showComposer && (
-              <form onSubmit={onCreateNotification} className="mb-3 space-y-2 rounded-xl border border-white/20 bg-white/5 p-3">
-                <input
-                  value={form.title}
-                  onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-                  placeholder="Title"
-                  className="w-full rounded-lg border border-white/20 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 outline-none"
-                />
-                <textarea
-                  value={form.message}
-                  onChange={(event) => setForm((prev) => ({ ...prev, message: event.target.value }))}
-                  placeholder="Message"
-                  rows={3}
-                  className="w-full rounded-lg border border-white/20 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
-                >
-                  {saving ? "Posting..." : "Post"}
-                </button>
-              </form>
-            )}
-
             <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-              {loading && <p className="text-xs text-slate-300">Loading notifications...</p>}
-              {!loading && notifications.length === 0 && <p className="text-xs text-slate-300">No notifications found.</p>}
+              {loading && <p className="text-xs text-slate-500 dark:text-slate-300">Loading notices...</p>}
+              {!loading && loadError && <p className="text-xs text-rose-600 dark:text-rose-300">{loadError}</p>}
+              {!loading && !loadError && notifications.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-300">No notices available.</p>}
               {!loading &&
                 notifications.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-white/15 bg-white/5 p-3">
-                    <div className="mb-1 flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-white">{item.title}</p>
-                      <button
-                        onClick={() => toggleRead(item)}
-                        className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${
-                          item.is_read
-                            ? "border border-white/20 text-slate-200 hover:bg-white/10"
-                            : "bg-emerald-600 text-white hover:bg-emerald-500"
-                        }`}
-                      >
-                        {item.is_read ? "Unread" : "Read"}
-                      </button>
+                  <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-white/15 dark:bg-white/5">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{item.title}</p>
+                      <span className="rounded-md bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                        {String(item.category || "notice").replaceAll("_", " ")}
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-200">{item.message}</p>
-                    <p className="mt-2 text-[11px] text-slate-400">
-                      {new Date(item.created_at).toLocaleString()} • {item.created_by_name || "System"}
+                    <p className="text-xs text-slate-600 dark:text-slate-200">{item.message}</p>
+                    <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      {item.created_at ? new Date(item.created_at).toLocaleString() : ""}
                     </p>
                   </div>
                 ))}

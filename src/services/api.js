@@ -54,6 +54,8 @@ export const api = {
   updateComplaintStatus: (id, status) =>
     request(`/api/complaints/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   getBilling: () => request("/api/billing"),
+  updateBillingStatus: (invoiceNo, status) =>
+    request(`/api/billing/${invoiceNo}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   getPaymentHistory: (invoiceNo) => request(`/api/billing/${invoiceNo}/history`),
   getAmenities: (date) => request(`/api/amenities${date ? `?date=${encodeURIComponent(date)}` : ""}`),
   addAmenityBooking: (payload) => request("/api/amenities/bookings", { method: "POST", body: JSON.stringify(payload) }),

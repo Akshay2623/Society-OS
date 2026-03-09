@@ -456,6 +456,37 @@ export async function getPaymentHistory(invoiceNo) {
   };
 }
 
+export async function updateBillingStatus(invoiceNo, status) {
+  const numericId = Number(String(invoiceNo).replace("INV-", ""));
+  if (!Number.isInteger(numericId) || numericId <= 0) {
+    throw new Error("Invalid invoice id");
+  }
+
+  const normalizedStatus = String(status || "").toLowerCase();
+  if (!["paid", "unpaid", "pending", "failed"].includes(normalizedStatus)) {
+    throw new Error("status must be Paid or Unpaid");
+  }
+
+  const mappedStatus = normalizedStatus === "unpaid" ? "pending" : normalizedStatus;
+  const sql = `
+    UPDATE payments
+    SET status = $2
+    WHERE id = $1
+    RETURNING
+      ('INV-' || id) AS id,
+      INITCAP(status) AS status
+  `;
+  const { rows } = await query(sql, [numericId, mappedStatus]);
+  if (!rows[0]) {
+    throw new Error("Invoice not found");
+  }
+
+  return {
+    id: rows[0].id,
+    status: rows[0].status === "Paid" ? "Paid" : "Unpaid",
+  };
+}
+
 export async function getAmenities() {
   const today = new Date();
   const selectedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -779,7 +810,7 @@ export async function getDefaulters() {
   return rows;
 }
 
-export async function getAuthUserByEmailAndRole(email, role) {
+export async function getAuthUsersByEmail(email) {
   const schema = await getUsersSchemaFlags();
   const hasPasswordHash = schema.hasPasswordHash;
   const hasPassword = schema.hasPassword;
@@ -796,11 +827,11 @@ export async function getAuthUserByEmailAndRole(email, role) {
       ${hasPassword ? "password" : "NULL::text"} AS password_plain,
       ${hasPasswordHash ? "true" : "false"}::boolean AS has_password_hash_column
     FROM users
-    WHERE lower(email) = lower($1) AND role = $2
-    LIMIT 1
+    WHERE lower(email) = lower($1)
+    ORDER BY id ASC
   `;
-  const { rows } = await query(sql, [email, role]);
-  return rows[0] || null;
+  const { rows } = await query(sql, [email]);
+  return rows;
 }
 
 async function getUsersSchemaFlags() {

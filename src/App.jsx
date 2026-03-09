@@ -12,6 +12,7 @@ import Billing from "./pages/Billing";
 import Amenities from "./pages/Amenities";
 import Financial from "./pages/Financial";
 import Assistant from "./pages/Assistant";
+import Notices from "./pages/Notices";
 import Login from "./pages/Login";
 import { getRoleHome } from "./utils/auth";
 
@@ -145,6 +146,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["admin", "resident"]}>
               <Financial />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notices"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Notices />
             </ProtectedRoute>
           }
         />

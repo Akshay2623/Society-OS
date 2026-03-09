@@ -8,6 +8,7 @@ import {
   Building2,
   LineChart,
   BotMessageSquare,
+  Bell,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const navItems = [
   { label: "Billing", path: "/billing", icon: Receipt, allowedRoles: ["admin", "resident"] },
   { label: "Amenities", path: "/amenities", icon: Building2, allowedRoles: ["admin", "resident"] },
   { label: "Financial", path: "/financial", icon: LineChart, allowedRoles: ["admin", "resident"] },
+  { label: "Notices", path: "/notices", icon: Bell, allowedRoles: ["admin"] },
   { label: "AI Assistant", path: "/assistant", icon: BotMessageSquare, allowedRoles: ["admin"] },
 ];
 

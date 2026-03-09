@@ -2,6 +2,7 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  ComposedChart,
   XAxis,
   YAxis,
   Tooltip,
@@ -10,6 +11,7 @@ import {
   Cell,
   BarChart,
   Bar,
+  ErrorBar,
   CartesianGrid,
   Legend,
 } from "recharts";
@@ -92,6 +94,43 @@ export function RevenueExpenseLineChart({ data }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
+    </div>
+  );
+}
+
+export function VisitorsCandleChart({ data }) {
+  return (
+    <div className="rounded-2xl border border-white/15 bg-slate-900/55 p-6 backdrop-blur">
+      <h3 className="mb-4 text-lg font-semibold text-white">Visitors Candle Trend</h3>
+      <div className="h-72">
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data}>
+            <CartesianGrid strokeDasharray="4 4" stroke="#334155" />
+            <XAxis dataKey="label" stroke="#cbd5e1" />
+            <YAxis stroke="#cbd5e1" allowDecimals={false} />
+            <Tooltip
+              formatter={(value, key) => {
+                if (key === "bodySize" || key === "bodyBase" || key === "wickCenter") return null;
+                return [value, key];
+              }}
+            />
+
+            {/* Transparent stack base to position candle body between open/close */}
+            <Bar dataKey="bodyBase" stackId="candle" fill="transparent" />
+            <Bar dataKey="bodySize" stackId="candle" radius={[4, 4, 0, 0]}>
+              {data.map((row) => (
+                <Cell key={row.label} fill={row.trend === "up" ? "#10B981" : "#F43F5E"} />
+              ))}
+            </Bar>
+
+            {/* Wick from low to high */}
+            <Line dataKey="wickCenter" stroke="transparent" dot={false} activeDot={false}>
+              <ErrorBar dataKey="wickRange" width={6} stroke="#94A3B8" direction="y" />
+            </Line>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="mt-2 text-xs text-slate-300">Open: Pending, Close: Approved+Exited, High: Total visitors, Low: Rejected.</p>
     </div>
   );
 }

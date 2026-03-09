@@ -9,7 +9,7 @@ import {
   addComplaint,
   addResident,
   deleteResident,
-  getAuthUserByEmailAndRole,
+  getAuthUsersByEmail,
   getAmenities,
   getAmenitiesByDate,
   addAmenityBooking,
@@ -26,6 +26,7 @@ import {
   getRecentActivities,
   getResidents,
   getVisitors,
+  updateBillingStatus,
   updateUserPasswordHash,
   updateVisitor,
   updateComplaintStatus,
@@ -53,44 +54,50 @@ app.get("/api/health", (_, res) => {
 });
 
 app.post("/api/auth/login", asyncHandler(async (req, res) => {
-  const { email, password, role } = req.body;
+  const { email, password } = req.body;
 
-  if (!email || !password || !role) {
-    return res.status(400).json({ error: "Email, password, and role are required" });
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
   }
 
-  if (!["admin", "resident", "security"].includes(role)) {
-    return res.status(400).json({ error: "Invalid role" });
-  }
-
-  const user = await getAuthUserByEmailAndRole(email, role);
-  if (!user) {
+  const users = await getAuthUsersByEmail(email);
+  if (!users.length) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
-  let matched = false;
-  const hashLooksBcrypt = typeof user.password_hash === "string" && user.password_hash.startsWith("$2");
+  let matchedUser = null;
+  let matchedViaBcrypt = false;
+  for (const user of users) {
+    const hashLooksBcrypt = typeof user.password_hash === "string" && user.password_hash.startsWith("$2");
+    let matched = false;
 
-  if (hashLooksBcrypt) {
-    matched = await bcrypt.compare(password, user.password_hash);
-  } else if (typeof user.password_hash === "string" && user.password_hash.length > 0) {
-    matched = password === user.password_hash;
-  } else if (typeof user.password_plain === "string" && user.password_plain.length > 0) {
-    matched = password === user.password_plain;
+    if (hashLooksBcrypt) {
+      matched = await bcrypt.compare(password, user.password_hash);
+    } else if (typeof user.password_hash === "string" && user.password_hash.length > 0) {
+      matched = password === user.password_hash;
+    } else if (typeof user.password_plain === "string" && user.password_plain.length > 0) {
+      matched = password === user.password_plain;
+    }
+
+    if (matched) {
+      matchedUser = user;
+      matchedViaBcrypt = hashLooksBcrypt;
+      break;
+    }
   }
 
-  if (!matched) {
+  if (!matchedUser) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
 
   // Legacy plain password auto-upgrade to bcrypt hash.
-  if (!hashLooksBcrypt && user.has_password_hash_column) {
+  if (!matchedViaBcrypt && matchedUser.has_password_hash_column) {
     const nextHash = await bcrypt.hash(password, 12);
-    await updateUserPasswordHash(user.id, nextHash);
+    await updateUserPasswordHash(matchedUser.id, nextHash);
   }
 
-  const token = signAuthToken(user);
-  return res.json({ token, role: user.role });
+  const token = signAuthToken(matchedUser);
+  return res.json({ token, role: matchedUser.role });
 }));
 
 app.get("/api/auth/me", authenticateJWT, asyncHandler(async (req, res) => {
@@ -204,6 +211,15 @@ app.get("/api/billing/:invoiceNo/history", authenticateJWT, asyncHandler(async (
   res.json(data);
 }));
 
+app.patch("/api/billing/:invoiceNo/status", authenticateJWT, authorizeRoles("admin"), asyncHandler(async (req, res) => {
+  const { status } = req.body || {};
+  if (!status) {
+    return res.status(400).json({ error: "status is required" });
+  }
+  const data = await updateBillingStatus(req.params.invoiceNo, status);
+  res.json(data);
+}));
+
 app.get("/api/amenities", authenticateJWT, asyncHandler(async (req, res) => {
   const date = req.query.date;
   const data = date ? await getAmenitiesByDate(date) : await getAmenities();
@@ -271,9 +287,15 @@ async function ensureNotificationTables() {
       title TEXT NOT NULL,
       message TEXT NOT NULL,
       created_by INT REFERENCES users(id) ON DELETE SET NULL,
+      is_pinned BOOLEAN NOT NULL DEFAULT false,
       is_active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
+  `);
+
+  await dbQuery(`
+    ALTER TABLE notifications
+    ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT false
   `);
 
   await dbQuery(`
@@ -306,6 +328,7 @@ app.get("/api/notifications", authenticateJWT, asyncHandler(async (req, res) => 
       n.category,
       n.title,
       n.message,
+      n.is_pinned,
       n.created_at,
       n.created_by,
       COALESCE(u.name, 'System') AS created_by_name,
@@ -315,18 +338,19 @@ app.get("/api/notifications", authenticateJWT, asyncHandler(async (req, res) => 
     LEFT JOIN notification_reads nr ON nr.notification_id = n.id AND nr.user_id = $1
     WHERE n.is_active = true
       ${filterSql}
-    ORDER BY n.created_at DESC
+    ORDER BY n.is_pinned DESC, n.created_at DESC
     LIMIT 100
   `;
   const { rows } = await dbQuery(sql, params);
   res.json(rows);
 }));
 
-app.post("/api/notifications", authenticateJWT, asyncHandler(async (req, res) => {
+app.post("/api/notifications", authenticateJWT, authorizeRoles("admin"), asyncHandler(async (req, res) => {
   await ensureNotificationTables();
   const category = normalizeText(req.body?.category || "").toLowerCase();
   const title = normalizeText(req.body?.title);
   const message = normalizeText(req.body?.message);
+  const isPinned = req.body?.isPinned === true;
 
   if (!NOTIFICATION_CATEGORIES.includes(category)) {
     return res.status(400).json({ error: "Invalid category" });
@@ -336,11 +360,11 @@ app.post("/api/notifications", authenticateJWT, asyncHandler(async (req, res) =>
   }
 
   const sql = `
-    INSERT INTO notifications (category, title, message, created_by)
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, category, title, message, created_at, created_by
+    INSERT INTO notifications (category, title, message, created_by, is_pinned)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, category, title, message, is_pinned, created_at, created_by
   `;
-  const { rows } = await dbQuery(sql, [category, title, message, req.user.sub]);
+  const { rows } = await dbQuery(sql, [category, title, message, req.user.sub, isPinned]);
   res.status(201).json(rows[0]);
 }));
 
