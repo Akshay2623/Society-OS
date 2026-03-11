@@ -111,7 +111,7 @@ export async function getRecentActivities() {
   const sql = `
     (
       SELECT
-        ('Maintenance payment received from Flat ' || f.flat_number) AS message,
+        ('Maintenance payment received from Flat ' || COALESCE(f.flat_number, 'Unknown')) AS message,
         COALESCE(p.payment_date, now()) AS created_at
       FROM payments p
       JOIN users u ON u.id = p.user_id
@@ -123,8 +123,11 @@ export async function getRecentActivities() {
     UNION ALL
     (
       SELECT
-        ('Complaint #' || c.id || ' moved to ' || replace(c.status, '_', ' ')) AS message,
-        c.created_at
+        CASE
+          WHEN c.status = 'open' THEN ('Complaint #' || c.id || ' raised')
+          ELSE ('Complaint #' || c.id || ' moved to ' || replace(c.status, '_', ' '))
+        END AS message,
+        COALESCE(c.created_at, now()) AS created_at
       FROM complaints c
       ORDER BY c.created_at DESC
       LIMIT 4

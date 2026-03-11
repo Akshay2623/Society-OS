@@ -100,6 +100,9 @@ function Visitors() {
         const wickCenter = (high + low) / 2;
         const wickRange = (high - low) / 2;
 
+        const positive = row.approved + row.exited;
+        const negative = row.pending + row.rejected;
+
         return {
           label: row.label,
           open,
@@ -110,7 +113,7 @@ function Visitors() {
           bodySize,
           wickCenter,
           wickRange,
-          trend: close >= open ? "up" : "down",
+          trend: positive >= negative ? "up" : "down",
         };
       });
   }, [visitorsData]);
