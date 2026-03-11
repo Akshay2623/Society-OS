@@ -1,5 +1,6 @@
 import { clearAuth, getToken } from "../utils/auth";
-const API_BASE = "https://society-os.onrender.com";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://society-os.onrender.com";
 async function request(path, options = {}) {
   const token = getToken();
   const mergedHeaders = {
